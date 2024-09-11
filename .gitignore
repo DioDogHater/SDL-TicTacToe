@@ -1,0 +1,9 @@
+#ignore all code:blocks files
+*.cbp
+*.depend
+*.layout
+#ignore all code:blocks cache and shit
+**/bin
+**/obj
+#ignore all batch files (they wont work on your setups)
+*.bat
