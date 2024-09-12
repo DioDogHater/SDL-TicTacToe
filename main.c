@@ -11,7 +11,7 @@
 
 //Screen dimension constants
 unsigned const int SCREEN_WIDTH = 480;
-unsigned const int SCREEN_HEIGHT = 480;
+unsigned const int SCREEN_HEIGHT = 520;
 
 unsigned const int GRID_SCALE = 480/3;
 
@@ -25,13 +25,22 @@ SDL_Surface* WindowSurface = NULL;
 SDL_Renderer* WindowRenderer;
 
 // Loop condition
-int running = true;
+unsigned int running = true;
+
+// Game state
+unsigned int state = 0;
+
 //Event handler
 SDL_Event e;
 
 //Images
 SDL_Surface* imageSigma = NULL;
 SDL_Surface* imageBeta = NULL;
+SDL_Surface* imageWin = NULL;
+SDL_Surface* imageLose = NULL;
+SDL_Surface* imageTie = NULL;
+SDL_Surface* imagePlay = NULL;
+unsigned int textState = 0;
 
 //Tic Tac Toe elements
 int toes[3][3] = {{0,0,0},{0,0,0},{0,0,0}};
@@ -138,24 +147,24 @@ void resetToes(){
 int checkWin(){
 	int currWin = getWinner();
 	if(currWin != 0){
-		return true;
+		return currWin;
 	}else if(boardFull() == true){
-		return true;
+		return 0;
 	}
-	return false;
+	return -2;
 }
 
 void drawToes(){
 	for(int y = 0; y < 3; y++){
 		for(int x = 0; x < 3; x++){
-			if(toes[y][x] == 1){
+			if(toes[y][x] == -1){
 				SDL_Rect imageBetaRect;
 				imageBetaRect.x = x*GRID_SCALE;
 				imageBetaRect.y = y*GRID_SCALE;
 				imageBetaRect.w = GRID_SCALE;
 				imageBetaRect.h = GRID_SCALE;
 				SDL_BlitScaled(imageBeta, NULL, WindowSurface, &imageBetaRect);
-			}else if(toes[y][x] == -1){
+			}else if(toes[y][x] == 1){
 				SDL_Rect imageSigmaRect;
 				imageSigmaRect.x = x*GRID_SCALE;
 				imageSigmaRect.y = y*GRID_SCALE;
@@ -221,6 +230,14 @@ void quit(){
 	imageSigma = NULL;
 	SDL_FreeSurface(imageBeta);
 	imageBeta = NULL;
+	SDL_FreeSurface(imagePlay);
+	imagePlay = NULL;
+	SDL_FreeSurface(imageLose);
+	imageLose = NULL;
+	SDL_FreeSurface(imageWin);
+	imageWin = NULL;
+	SDL_FreeSurface(imageTie);
+	imageTie = NULL;
 	
     //Destroy window
 	SDL_DestroyRenderer(WindowRenderer);
@@ -232,39 +249,87 @@ void quit(){
     SDL_Quit();
 }
 
+void drawText(){
+	SDL_Rect textRect;
+	textRect.x = 0; textRect.y = 480;
+	textRect.w = 0; textRect.h = 0;
+	if(textState == 0){
+		SDL_BlitSurface(imagePlay, NULL, WindowSurface, &textRect);
+	}else if(textState == 1){
+		SDL_BlitSurface(imageWin, NULL, WindowSurface, &textRect);
+	}else if(textState == 2){
+		SDL_BlitSurface(imageLose, NULL, WindowSurface, &textRect);
+	}else if(textState == 3){
+		SDL_BlitSurface(imageTie, NULL, WindowSurface, &textRect);
+	}
+}
+
 void render(){
-    return;
+    drawToes();
+	drawText();
+}
+
+int ifWin(){
+	int winCon = checkWin();
+	if(winCon != -2){
+		state = 1;
+		if(winCon == 0){
+			textState = 3;
+		}else if(winCon == 1){
+			textState = 1;
+		}else{
+			textState = 2;
+		}
+		return true;
+	}
+	return false;
 }
 
 int main(int argv, char* args[]){
     //Start up SDL and create window
-    if( !init() ){
-        printf( "Failed to initialize!\n" ); return -1;
+    if(!init()){
+        printf("Failed to initialize!\n");
+		return -1;
     }
 	
 	imageSigma = loadImage("assets/X.bmp");
 	imageBeta = loadImage("assets/O.bmp");
+	imagePlay = loadImage("assets/Play.bmp");
+	imageTie = loadImage("assets/Tie.bmp");
+	imageLose = loadImage("assets/Lose.bmp");
+	imageWin = loadImage("assets/Win.bmp");
 
     while(running){
         // Handle events
         while(SDL_PollEvent(&e) != 0){
             if(e.type == SDL_QUIT){
                 running = false;
-            }if(e.type == SDL_MOUSEBUTTONDOWN){
-				int mouseX, mouseY;
-				SDL_GetMouseState(&mouseX,&mouseY);
-				unsigned int gridX = abs(mouseX/GRID_SCALE);
-				unsigned int gridY = abs(mouseY/GRID_SCALE);
-				if(toes[gridY][gridX] == 0){
-					toes[gridY][gridX] = -1;
+            }
+			if(e.type == SDL_MOUSEBUTTONDOWN){
+				if(state == 1){
+					state = 0; textState = 0; resetToes();
+				}else{
+					int mouseX, mouseY;
+					SDL_GetMouseState(&mouseX,&mouseY);
+					if(mouseY > 480){continue;}
+					unsigned int gridX = abs(mouseX/GRID_SCALE);
+					unsigned int gridY = abs(mouseY/GRID_SCALE);
+					if(toes[gridY][gridX] == 0){
+						if(textState == 0){textState = 4;}
+						toes[gridY][gridX] = 1;
+						if(ifWin()){continue;}
+						doSomething();
+						if(ifWin()){continue;}
+					}
 				}
 			}
         }
 		// Clear screen
 		SDL_RenderClear(WindowRenderer);
+		SDL_FillRect(WindowSurface, NULL, SDL_MapRGB(WindowSurface->format,0,0,0));
 		
 		// Render current game
-		drawToes();
+		render();
 		
 		// Update Window visuals
 		SDL_UpdateWindowSurface(Window);
