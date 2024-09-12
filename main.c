@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <SDL.h>
 
-#include <windows.h>
-
 #undef main
 #define true 1
 #define false 0
